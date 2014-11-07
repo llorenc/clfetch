@@ -216,7 +216,7 @@ $command --download
 # 2. Retrive member names.
 $command --showmembers
 # 3. Retrive some members:
-$command --membercontent --membercontent name,uri,addrs.internal_ipv6,addrs.local_ipv4
+$command --membercontent name,uri,addrs.internal_ipv6,addrs.local_ipv4
 EOF
   exit(1) ;
 }
