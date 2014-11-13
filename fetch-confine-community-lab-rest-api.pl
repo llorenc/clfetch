@@ -7,6 +7,7 @@ use JSON ;
 use Getopt::Long; Getopt::Long::Configure ("gnu_getopt");
 use utf8 ;
 binmode(STDOUT, ":utf8");
+use Data::Dumper qw(Dumper);
 
 ##
 ## prototypes
@@ -117,6 +118,15 @@ sub get_id_from_name($) {
   return $name ;
 }
 
+sub JSON::PP::sorter {
+    # Sort hash keys alphabetically.
+    if(($JSON::PP::a =~ /^\d+$/) && ($JSON::PP::b =~ /^\d+$/)) {
+      $JSON::PP::a <=> $JSON::PP::b ;
+    } else {
+      $JSON::PP::a cmp $JSON::PP::b ;
+    }
+} ;
+
 sub membercontent() {
   my $json ;
   my @files = sort { get_id_from_name($a) <=> get_id_from_name($b) } glob "$data_dir/node-*.json" ;
@@ -141,7 +151,7 @@ sub membercontent() {
       }
     }
   }
-  print to_json($json, {pretty => 1}) ;
+  print to_json($json, {pretty => 1, sort_by => "sorter"}) ;
 }
 
 sub escape_ipv6($) {
