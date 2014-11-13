@@ -35,7 +35,7 @@ my $nodeid = 0 ;
 my $optsgen =
   {
    'help|h' => "this help.",
-   'nodeid:i' => "only this nodeid, 0 all (default $nodeid).",
+   'nodeid:s' => "only this nodeid, 0 all (default $nodeid).",
    'showmembers' => "show members.",
    'membercontent:s' => "print content of member in list.",
    'download' => "download files, skip downloaded previously.",
@@ -50,7 +50,7 @@ my $optsgen =
 my $command = $0 ; $command =~ s%.*/(\w+)%$1% ;
 my(%opts, $res) ;
 eval('$res = GetOptions(\\%opts, qw(' . join(' ', keys %{$optsgen}) . '))') ;
-$nodeid = $opts{nodeid} if defined $opts{nodeid} ;
+$nodeid = $opts{nodeid} if $opts{nodeid} ;
 usage() if ((!$res) || $opts{help} || !keys %opts) ;
 download() if ($opts{download} || $opts{forcedownload}) ;
 showmembers() if $opts{showmembers} ;
@@ -68,12 +68,13 @@ sub download() {
   ## read the node list from file.
   my $node_list_json = get_json_from_file("$data_dir/$node_list_file") ;
   my $count = 0 ;
+  my $number = ($nodeid+0) ? split(/,/, $nodeid) : scalar @{$node_list_json} ;
   ## for each node
   foreach my $node (@{$node_list_json}) {
-    $count++ ;
-    if (!$nodeid || ($node->{id} == $nodeid)) {
+    if(!($nodeid+0) || ($nodeid =~ /\b$node->{id}\b/)) {
+      $count++ ;
       ## 1. Retrieve its URI and look for the node API base URI
-      print "-- $count: $node->{uri}\n" ;
+      print "-- $count/$number: $node->{uri}\n" ;
       my $node_api_base_uri = get_header($node->{uri}, "http://confine-project.eu/rel/server/node-base") ;
       print "node_api_base_uri: $node_api_base_uri\n" ;
       # 2. Retrieve the node API base URI and look for the node URI
@@ -83,7 +84,7 @@ sub download() {
 	print "node_uri: $node_uri\n" ;
 	get_content_to_file($node_uri,  $node_json_file) ;
       }
-      exit if ($node->{id} == $nodeid) ;
+#      exit if ($node->{id} == $nodeid) ;
     }
   }
 }
@@ -129,7 +130,19 @@ sub JSON::PP::sorter {
 
 sub membercontent() {
   my $json ;
-  my @files = sort { get_id_from_name($a) <=> get_id_from_name($b) } glob "$data_dir/node-*.json" ;
+  my @files ;
+  if($opts{nodeid}) {
+    for my $id (split /,/, $opts{nodeid}) {
+      my $fname = "$data_dir/node-${id}.json" ;
+      if(-e $fname) {
+	push @files, $fname ;
+      } else {
+	warn "$fname not fount\n" ;
+      }
+    }
+  } else {
+    @files = glob("$data_dir/node-*.json") ;
+  }
   my $keys ;
   for my $k (split /,/, $opts{membercontent}) {
     if($k =~ /\./) {
@@ -226,7 +239,8 @@ $command --download
 # 2. Retrive member names.
 $command --showmembers
 # 3. Retrive some members:
-$command --membercontent name,uri,addrs.internal_ipv6,addrs.local_ipv4
+$command --membercontent name,uri,addrs.local_ipv6,addrs.local_ipv4
+$command --membercontent name,uri,addrs.local_ipv6,addrs.local_ipv4 --nodeid 140,150
 EOF
   exit(1) ;
 }
